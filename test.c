@@ -7,9 +7,11 @@
 int main(void)
 {
 	int fd;
-
+	
+	pid_t pid = fork(); 
 	fd = open("/dev/cdata", O_RDWR);
-	ioctl(fd,CDATA_EMPTY);
-	ioctl(fd,CDATA_SYNC);
+	//fork();
+	ioctl(fd,CDATA_EMPTY,0);
+	ioctl(fd,CDATA_SYNC,0);
 	close(fd);
 }

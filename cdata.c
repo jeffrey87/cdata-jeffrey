@@ -21,6 +21,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 
 	minor = MINOR(inode->i_rdev);
 	printk(KERN_ALERT "cdata: in cdata_open(minor = %d)\n", minor);
+	printk(KERN_ALERT "cdata: the file struct address *filp is %d\n", filp);
 	/*
 	while (1) {
 	}
