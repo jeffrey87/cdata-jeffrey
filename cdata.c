@@ -98,8 +98,10 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	/* mutex_lock */
 	for (i = 0; i < count; i++) 
 	{
-		if (cdata->index >= BUFSIZE)
-			return -EFAULT;
+		if (cdata->index >= BUFSIZE) {
+			current->state = TASK_UNINTERRUPTIBLE;
+			schedule();
+		}
 		
 		/* if function have let process sleep like kmalloc,vmalloc, copy_from_user...  it must reentrant whather single or SMP */
 		/* synchronization (share data) problem */
