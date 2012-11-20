@@ -15,7 +15,7 @@
 #endif
 
 #define	CDATA_MAJOR 121 
-#define BUFSIZE 20
+#define BUFSIZE 1024
 
 struct cdata_t {
 	char data[BUFSIZE];
@@ -57,8 +57,6 @@ static int cdata_ioctl(struct inode *inode, struct file *filp,
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 	switch(cmd) 
 	{
-	 // int i;
-	 //  struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 		case CDATA_EMPTY:
 			printk(KERN_ALERT "in ioctl: IOCTL_EMPTY\n");
 			for (i = 0; i < BUFSIZE; i++)
