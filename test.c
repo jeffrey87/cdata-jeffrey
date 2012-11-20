@@ -11,7 +11,13 @@ int main(void)
 	pid_t pid = fork(); 
 	fd = open("/dev/cdata", O_RDWR);
 	//fork();
-	ioctl(fd,CDATA_EMPTY,0);
+	if (pid != 0) {
+		write(fd, "ABCDE", 5);
+	} 
+	else {
+		write(fd, "12345", 5);
+	}
 	ioctl(fd,CDATA_SYNC,0);
+	ioctl(fd,CDATA_EMPTY,0);
 	close(fd);
 }

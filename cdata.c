@@ -15,7 +15,7 @@
 #endif
 
 #define	CDATA_MAJOR 121 
-#define BUFSIZE 1024
+#define BUFSIZE 20
 
 struct cdata_t {
 	char data[BUFSIZE];
@@ -39,6 +39,8 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	cdata->index = 0;  /* the kmalloc does not clear the memory vlaue */ 
 	filp->private_data = (void *)cdata;
 
+	 
+
 	/*
 	while (1) {
 	}
@@ -51,23 +53,32 @@ static int cdata_ioctl(struct inode *inode, struct file *filp,
 			unsigned int cmd, unsigned long arg)
 {
 	printk(KERN_ALERT "cdata: in cdata_ioctl()\n");
-
+	int i;
+	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 	switch(cmd) 
 	{
-		int i;
-		struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
+	 // int i;
+	 //  struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 		case CDATA_EMPTY:
 			printk(KERN_ALERT "in ioctl: IOCTL_EMPTY\n");
 			for (i = 0; i < BUFSIZE; i++)
-				cdata->data[i] = '';				
-			
+				cdata->data[i] = ' ';				
+		
+			printk(KERN_ALERT "------clear data------\n");
+			for (i = 0; i < BUFSIZE; i++)
+				printk(KERN_ALERT "%c", cdata->data[i]);
+
+			printk(KERN_ALERT "\n");
+
 			break;
 
 		case CDATA_SYNC:
 			printk(KERN_ALERT "in inctl: IOCTL_SYNC\n");
-			for (i = 0; i < BUFSIZE; i++)
+			printk(KERN_ALERT "The input value is :\n");
+			for (i = 0; i < cdata->index; i++)
 				printk(KERN_ALERT "%c",cdata->data[i]);
-			
+			printk(KERN_ALERT "\n");
+
 			break;
 
 		default:
@@ -101,6 +112,9 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 		if (cdata->index >= BUFSIZE) {
 			current->state = TASK_UNINTERRUPTIBLE;
 			schedule();
+	
+
+			/* current->state = TASK_RUNNING;  it is wrong concept */
 		}
 		
 		/* if function have let process sleep like kmalloc,vmalloc, copy_from_user...  it must reentrant whather single or SMP */
