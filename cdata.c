@@ -32,13 +32,12 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	/* no reentrancy  because P1 and P2 have their own malloc*/ 
 	
 	int minor;
-
+	struct cdata_t *cdata;
 	minor = MINOR(inode->i_rdev);
 	/*
 	printk(KERN_ALERT "cdata: in cdata_open(minor = %d)\n", minor);
 	printk(KERN_ALERT "cdata: the file struct address *filp is %d\n", filp);
 	*/
-	struct cdata_t *cdata;
 
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t), GFP_KERNEL);
 	cdata->index = 0;  /* the kmalloc does not clear the memory vlaue */ 
@@ -58,9 +57,10 @@ static int cdata_open(struct inode *inode, struct file *filp)
 static int cdata_ioctl(struct inode *inode, struct file *filp, 
 			unsigned int cmd, unsigned long arg)
 {
-	printk(KERN_ALERT "cdata: in cdata_ioctl()\n");
 	int i;
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
+	
+	printk(KERN_ALERT "cdata: in cdata_ioctl()\n");
 	switch(cmd) 
 	{
 		case CDATA_EMPTY:
@@ -88,6 +88,8 @@ static int cdata_ioctl(struct inode *inode, struct file *filp,
 		default:
 			return -ENOTTY;
 	}
+
+	return 0;
 }
 
 
@@ -95,6 +97,8 @@ static ssize_t cdata_read(struct file *filp, char *buf,
 				size_t size, loff_t *off)
 {
 	printk(KERN_ALERT "cdata: in cdata_read()\n");
+
+	return 0;
 }
 
 static ssize_t cdata_write(struct file *filp, const char *buf, 
@@ -103,12 +107,11 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	
 	/* may have reentrant if open before fork */
 
-	printk(KERN_ALERT "cdata_write: %s\n", buf);
-
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 	int i;
 	DECLARE_WAITQUEUE(wait, current); //exe 7
 
+	printk(KERN_ALERT "cdata_write: %s\n", buf);
 	/* if CPU is single it may not reentrant, if SMP, it may */
 
 	/* mutex_lock */
