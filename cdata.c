@@ -166,8 +166,25 @@ struct file_operations cdata_fops = {
 
 int my_init_module(void)
 {
-	register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops);
-	printk(KERN_ALERT "cdata module: registered.\n");
+	int i;
+	char *fb;
+
+	if (register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops)) {
+
+		printk(KERN_ALERT "cdata module: Can not registered.\n");
+	}
+	else {
+		printk(KERN_ALERT "cdata module: registered.\n");
+	}
+
+	fb = ioremap(0x33f00000, 400);
+
+	for (i = 0; i < 100; i++)
+	{
+		//writel(fb, 0x00ff0000);
+		writel(0x00ff0000, fb);
+		fb += 4;
+	}
 
 	return 0;
 }
