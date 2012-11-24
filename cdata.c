@@ -20,6 +20,9 @@
 struct cdata_t {
 	char data[BUFSIZE];
 	int index;
+
+	wait_queue_head_t	wait;
+
 };
 
 static int cdata_open(struct inode *inode, struct file *filp)
@@ -38,7 +41,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t), GFP_KERNEL);
 	cdata->index = 0;  /* the kmalloc does not clear the memory vlaue */ 
 	filp->private_data = (void *)cdata;
-
+	init_waitqueue_head(&cdata->wait);
 	 
 
 	/*
@@ -101,19 +104,29 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 	int i;
+	DECLARE_WAITQUEUE(wait, current); //exe 7
 
 	/* if CPU is single it may not reentrant, if SMP, it may */
 
 	/* mutex_lock */
 	for (i = 0; i < count; i++) 
 	{
+
 		if (cdata->index >= BUFSIZE) {
-			current->state = TASK_UNINTERRUPTIBLE;
+			
+			add_wait_queue(&cdata->wait, &wait);// exe 7
+			set_current_state(TASK_UNINTERRUPTIBLE);
+
+			// exe 7
+			//current->state = TASK_UNINTERRUPTIBLE;
 			schedule();
-	
+            
 
 			/* current->state = TASK_RUNNING;  it is wrong concept */
+			current->state = TASK_RUNNING;
+			remove_wait_queue(&cdata->wait, &wait);
 		}
+
 		
 		/* if function have let process sleep like kmalloc,vmalloc, copy_from_user...  it must reentrant whather single or SMP */
 		/* synchronization (share data) problem */
