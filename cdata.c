@@ -21,9 +21,11 @@ struct cdata_t {
 	char data[BUFSIZE];
 	int index;
 
-	wait_queue_head_t	wait;
+	wait_queue_head_t	wait; //exe7
 
 };
+
+static DECLARE_MUTEX(cdata_sem);
 
 static int cdata_open(struct inode *inode, struct file *filp)
 {
@@ -41,7 +43,8 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t), GFP_KERNEL);
 	cdata->index = 0;  /* the kmalloc does not clear the memory vlaue */ 
 	filp->private_data = (void *)cdata;
-	init_waitqueue_head(&cdata->wait);
+	init_waitqueue_head(&cdata->wait); //exe7
+	
 	 
 
 	/*
@@ -109,12 +112,14 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	/* if CPU is single it may not reentrant, if SMP, it may */
 
 	/* mutex_lock */
+	down(&cdata_sem); //exe8
+
 	for (i = 0; i < count; i++) 
 	{
 
 		if (cdata->index >= BUFSIZE) {
 			
-			add_wait_queue(&cdata->wait, &wait);// exe 7
+			add_wait_queue(&cdata->wait, &wait);// exe 7 = sleep_on
 			set_current_state(TASK_UNINTERRUPTIBLE);
 
 			// exe 7
@@ -135,6 +140,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			return -EFAULT;
 	}	
 	/* mutex_unlock */
+	up(&cdata_sem);
 	return 0;
 }
 
