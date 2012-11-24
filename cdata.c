@@ -124,8 +124,10 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 
 			// exe 7
 			//current->state = TASK_UNINTERRUPTIBLE;
+
+			up(&cdata_sem); //exe9
 			schedule();
-            
+            down(&cdata_sem); //exe9
 
 			/* current->state = TASK_RUNNING;  it is wrong concept */
 			current->state = TASK_RUNNING;
