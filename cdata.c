@@ -17,9 +17,18 @@
 #define	CDATA_MAJOR 121 
 #define BUFSIZE 1024
 
+#define WIDTH 240
+#define HEIGHT 320
+#define BPP	4
+
+#define LCD_LENGTH (WIDTH * HEIGHT * BPP)
+
 struct cdata_t {
 	char data[BUFSIZE];
 	int index;
+
+	char *iomem;
+	struct timer_list timer;
 
 	wait_queue_head_t	wait; //exe7
 
@@ -43,13 +52,12 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	cdata->index = 0;  /* the kmalloc does not clear the memory vlaue */ 
 	filp->private_data = (void *)cdata;
 	init_waitqueue_head(&cdata->wait); //exe7
-	
-	 
 
-	/*
-	while (1) {
-	}
-	*/
+
+	cdata->iomem  = ioremap(0x33f00000, LCD_LENGTH);
+	init_timer(&cdata->timer);
+
+
 	return 0;
 }
 
@@ -101,6 +109,27 @@ static ssize_t cdata_read(struct file *filp, char *buf,
 	return 0;
 }
 
+
+/* supporting APIs */
+void flush_lcd(unsigned long priv)
+{
+	struct cdata_t *cdata = (struct cdata_t *)priv;
+	char *fb = cdata->iomem;
+	int index = cdata->index;
+	int i;
+
+	for (i = 0; i < index; i++)
+	{
+		writeb(cdata->data[i], fb++);
+	}
+
+	cdata->index = 0;
+
+	// wake up process
+	current->state = TASK_RUNNING;
+}
+
+
 static ssize_t cdata_write(struct file *filp, const char *buf, 
 				size_t count, loff_t *off)
 {
@@ -110,6 +139,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 	int i;
 	DECLARE_WAITQUEUE(wait, current); //exe 7
+
+	struct timer_list *flush_timer;
 
 	printk(KERN_ALERT "cdata_write: %s\n", buf);
 	/* if CPU is single it may not reentrant, if SMP, it may */
@@ -127,6 +158,12 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 
 			// exe 7
 			//current->state = TASK_UNINTERRUPTIBLE;
+		
+			flush_timer = &cdata->timer;
+			flush_timer->expires = jiffies + 500;
+			flush_timer->function = flush_lcd;
+			flush_timer->data = (unsigned long) cdata;
+			add_timer(flush_timer);
 
 			up(&cdata_sem); //exe9
 			schedule();
@@ -135,6 +172,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			/* current->state = TASK_RUNNING;  it is wrong concept */
 			current->state = TASK_RUNNING;
 			remove_wait_queue(&cdata->wait, &wait);
+			
+			del_timer(flush_timer);
 		}
 
 		
@@ -166,8 +205,7 @@ struct file_operations cdata_fops = {
 
 int my_init_module(void)
 {
-	int i;
-	char *fb;
+
 
 	if (register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops)) {
 
@@ -177,14 +215,7 @@ int my_init_module(void)
 		printk(KERN_ALERT "cdata module: registered.\n");
 	}
 
-	fb = ioremap(0x33f00000, 400);
-
-	for (i = 0; i < 100; i++)
-	{
-		//writel(fb, 0x00ff0000);
-		writel(0x00ff0000, fb);
-		fb += 4;
-	}
+	//cdata->iomem  = ioremap(0x33f00000, LCD_LENGTH);
 
 	return 0;
 }
