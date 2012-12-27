@@ -32,6 +32,8 @@ struct cdata_t {
 
 	wait_queue_head_t	wait; //exe7
 
+	int offset;
+
 };
 
 static DECLARE_MUTEX(cdata_sem);
@@ -117,15 +119,21 @@ void flush_lcd(unsigned long priv)
 	char *fb = cdata->iomem;
 	int index = cdata->index;
 	int i;
+	int offset = cdata->offset;
 
 	for (i = 0; i < index; i++)
 	{
-		writeb(cdata->data[i], fb++);
+		writeb(cdata->data[i], fb + offset);
+		offset ++;
+
+		if (offset == LCD_LENGTH)
+			offset = 0;
 	}
 
 	cdata->index = 0;
-
+	cdata->offset = offset; 
 	// wake up process
+	wake_up_interruptible(&cdata->wait);
 	current->state = TASK_RUNNING;
 }
 
@@ -154,7 +162,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 		if (cdata->index >= BUFSIZE) {
 			
 			add_wait_queue(&cdata->wait, &wait);// exe 7 = sleep_on
-			set_current_state(TASK_UNINTERRUPTIBLE);
+			set_current_state(TASK_INTERRUPTIBLE);
 
 			// exe 7
 			//current->state = TASK_UNINTERRUPTIBLE;
@@ -204,6 +212,8 @@ static int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 	 size = end - start;
 
 	 remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
+
+	 return 0;
 }
 
 
