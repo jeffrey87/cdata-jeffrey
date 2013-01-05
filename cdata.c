@@ -7,6 +7,7 @@
 #include <linux/wait.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
+#include <linux/tqueue.h>
 
 #include "cdata_ioctl.h"
 
@@ -28,15 +29,46 @@ struct cdata_t {
 	int index;
 
 	char *iomem;
+#if 0
 	struct timer_list timer;
-
+#endif
 	wait_queue_head_t	wait; //exe7
 
 	int offset;
 
+
+	struct tq_struct  tq;  // 2.4
+
 };
 
 static DECLARE_MUTEX(cdata_sem);
+
+ /* supporting APIs */
+void flush_lcd(unsigned long priv)
+	 {
+		     struct cdata_t *cdata = (struct cdata_t *)priv;
+		     char *fb = cdata->iomem;
+		     int index = cdata->index;
+		     int i;
+		     int offset = cdata->offset;
+		 
+			     for (i = 0; i < index; i++)
+			     {
+				         writeb(cdata->data[i], fb + offset);
+				         offset ++;
+				 
+					         if (offset == LCD_LENGTH)
+					             offset = 0;
+				  }
+				 
+					     cdata->index = 0;
+				     cdata->offset = offset;
+				     // wake up process
+					     wake_up_interruptible(&cdata->wait);
+				     current->state = TASK_RUNNING;
+		 }
+
+
 
 static int cdata_open(struct inode *inode, struct file *filp)
 {
@@ -57,7 +89,10 @@ static int cdata_open(struct inode *inode, struct file *filp)
 
 
 	cdata->iomem  = ioremap(0x33f00000, LCD_LENGTH);
+#if 0
 	init_timer(&cdata->timer);
+#endif 
+	INIT_TQUEUE(&cdata->tq, flush_lcd, (void *)cdata); // task queue
 
 
 	return 0;
@@ -113,6 +148,7 @@ static ssize_t cdata_read(struct file *filp, char *buf,
 
 
 /* supporting APIs */
+/*
 void flush_lcd(unsigned long priv)
 {
 	struct cdata_t *cdata = (struct cdata_t *)priv;
@@ -136,8 +172,7 @@ void flush_lcd(unsigned long priv)
 	wake_up_interruptible(&cdata->wait);
 	current->state = TASK_RUNNING;
 }
-
-
+*/
 static ssize_t cdata_write(struct file *filp, const char *buf, 
 				size_t count, loff_t *off)
 {
@@ -148,7 +183,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	int i;
 	DECLARE_WAITQUEUE(wait, current); //exe 7
 
-	struct timer_list *flush_timer;
+//	struct timer_list *flush_timer;
 
 	printk(KERN_ALERT "cdata_write: %s\n", buf);
 	/* if CPU is single it may not reentrant, if SMP, it may */
@@ -166,12 +201,15 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 
 			// exe 7
 			//current->state = TASK_UNINTERRUPTIBLE;
-		
+		    /*
 			flush_timer = &cdata->timer;
 			flush_timer->expires = jiffies + 500;
 			flush_timer->function = flush_lcd;
 			flush_timer->data = (unsigned long) cdata;
 			add_timer(flush_timer);
+			*/
+			schedule_task(&cdata->tq); // task queue
+
 
 			up(&cdata_sem); //exe9
 			schedule();
@@ -181,7 +219,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			current->state = TASK_RUNNING;
 			remove_wait_queue(&cdata->wait, &wait);
 			
-			del_timer(flush_timer);
+		//	del_timer(flush_timer);
 		}
 
 		
