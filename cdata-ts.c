@@ -84,6 +84,11 @@ static int cdata_ts_open(struct inode *inode, struct file *filp)
 	cdata->ts_input.name = "cdata-ts";
 	cdata->ts_input.open = ts_input_open;
 	cdata->ts_input.close = ts_input_close;
+
+	cdata->ts_input.private = (void *)cdata;
+	//set events
+	cdata->ts_input.evbit[0] = BIT(EV_ABS);
+	//set types
 	cdata->ts_input.absbit[0] = BIT(ABS_X) | BIT(ABS_Y);
 
 	input_register_device(&cdata->ts_input);
