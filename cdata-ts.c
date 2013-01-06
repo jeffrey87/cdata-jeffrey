@@ -128,7 +128,7 @@ owner: THIS_MODULE,
 };
 
 static struct miscdevice cdata_ts_misc = {
-minor: CDATA_TS_MINOR,
+	   minor: CDATA_TS_MINOR,
 	   name: "cdata-ts",
 	   fops: &cdata_ts_fops,
 };
