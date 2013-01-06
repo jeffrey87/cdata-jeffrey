@@ -7,7 +7,8 @@
 #include <linux/wait.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
-#include <linux/tqueue.h>
+//#include <linux/tqueue.h>
+#include <linux/workqueue.h>
 
 #include "cdata_ioctl.h"
 
@@ -17,10 +18,14 @@
 
 #define	CDATA_MAJOR 121 
 #define BUFSIZE 1024
-
+/*
 #define WIDTH 240
 #define HEIGHT 320
 #define BPP	4
+*/
+ #define WIDTH 640
+ #define HEIGHT 480
+ #define BPP 1
 
 #define LCD_LENGTH (WIDTH * HEIGHT * BPP)
 
@@ -37,16 +42,17 @@ struct cdata_t {
 	int offset;
 
 
-	struct tq_struct  tq;  // 2.4
+//	struct tq_struct  tq;  // 2.4
+	struct work_struct  work; // kernel 2.6  work queue
 
 };
 
 static DECLARE_MUTEX(cdata_sem);
 
  /* supporting APIs */
-void flush_lcd(unsigned long priv)
+void flush_lcd(struct work_struct *work)
 	 {
-		     struct cdata_t *cdata = (struct cdata_t *)priv;
+		     struct cdata_t *cdata = container_of(work,struct cdata_t,work);
 		     char *fb = cdata->iomem;
 		     int index = cdata->index;
 		     int i;
@@ -88,12 +94,15 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	init_waitqueue_head(&cdata->wait); //exe7
 
 
-	cdata->iomem  = ioremap(0x33f00000, LCD_LENGTH);
+//	cdata->iomem  = ioremap(0x33f00000, LCD_LENGTH);
+    cdata->iomem  = ioremap(0xb0000000, LCD_LENGTH);
+
+
 #if 0
 	init_timer(&cdata->timer);
 #endif 
-	INIT_TQUEUE(&cdata->tq, flush_lcd, (void *)cdata); // task queue
-
+//	INIT_TQUEUE(&cdata->tq, flush_lcd, (void *)cdata); // task queue
+	INIT_WORK(&cdata->work, flush_lcd);  // work queue
 
 	return 0;
 }
@@ -208,8 +217,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			flush_timer->data = (unsigned long) cdata;
 			add_timer(flush_timer);
 			*/
-			schedule_task(&cdata->tq); // task queue
-
+			//schedule_task(&cdata->tq); // task queue
+			schedule_work(&cdata->work); // work queue
 
 			up(&cdata_sem); //exe9
 			schedule();
@@ -249,7 +258,7 @@ static int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	 size = end - start;
 
-	 remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
+//	 remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
 
 	 return 0;
 }
