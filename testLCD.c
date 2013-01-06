@@ -11,7 +11,7 @@ int main(void)
 
 	while(1)
 	{
-		write(fd, pixel, 1);
+		write(fd, pixel, 4);
 	}
 
 	close(fd);
